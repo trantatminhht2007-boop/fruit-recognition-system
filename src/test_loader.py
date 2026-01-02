@@ -1,7 +1,7 @@
 from data_loader import load_datasets
 
 # Đường dẫn tính từ thư mục gốc của dự án
-PATH = "dataset"
+PATH = "E:/fruit-recognition-system/dataset"
 
 try:
     print("--- Đang kiểm tra Data Loader ---")
