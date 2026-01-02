@@ -101,7 +101,7 @@ if __name__ == "__main__":
     try:
         # Load model
         print("Loading model...")
-        model = tf.keras.models.load_model('models/best_model.h5')
+        model = tf.keras.models.load_model('models/best_model.keras')
         print("✅ Model loaded successfully")
         
         # OPTIONAL: Compile với XLA để nhanh hơn

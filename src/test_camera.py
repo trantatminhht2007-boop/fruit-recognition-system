@@ -9,7 +9,7 @@ import json
 MODEL_PATH = "models/best_model.h5"
 CLASS_PATH = "models/class_names.json"
 
-model = load_model(MODEL_PATH)
+model = load_model("models/best_model.keras")
 
 with open(CLASS_PATH, "r") as f:
     CLASS_NAMES = json.load(f)
