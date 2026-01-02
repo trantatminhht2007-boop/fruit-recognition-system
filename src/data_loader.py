@@ -24,7 +24,7 @@ def load_datasets(data_dir, img_size=(224, 224), batch_size=32, seed=42):
         batch_size=batch_size,
         label_mode='categorical',
         shuffle=True,
-        seed=seed  # Đảm bảo kết quả giống nhau mỗi lần chạy
+        seed=seed
     )
     
     val_ds = image_dataset_from_directory(
@@ -32,17 +32,17 @@ def load_datasets(data_dir, img_size=(224, 224), batch_size=32, seed=42):
         image_size=img_size,
         batch_size=batch_size,
         label_mode='categorical',
-        shuffle=False  # Val không cần shuffle
+        shuffle=False
     )
+    
+    # 👉 Lấy class_names ngay tại đây
+    class_names = train_ds.class_names
     
     # Performance optimization
     AUTOTUNE = tf.data.AUTOTUNE
     
-    # Cache → Shuffle → Prefetch để tối ưu I/O
     train_ds = train_ds.cache().shuffle(1000, seed=seed).prefetch(AUTOTUNE)
     val_ds = val_ds.cache().prefetch(AUTOTUNE)
-    
-    class_names = list(train_ds.class_names)
     
     print(f"✅ Loaded {len(class_names)} classes: {class_names}")
     print(f"✅ Training batches: {len(train_ds)}")

@@ -71,7 +71,7 @@ print(">>> GIAI ĐOẠN 2: Fine-Tuning 30 lớp cuối (15 epochs)")
 print("="*60)
 
 # FIXED: Dùng tên đã đặt trong model.py
-base_model = model.get_layer("mobilenet_base")
+base_model = model.get_layer("mobilenetv2_1.00_224")
 base_model.trainable = True
 
 # Chỉ mở khóa 30 lớp cuối
