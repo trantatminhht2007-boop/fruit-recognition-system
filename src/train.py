@@ -24,7 +24,7 @@ model.fit(train_ds, validation_data=val_ds, epochs=15)
 
 # Giai đoạn 2: Fine-tuning mở khóa 30 lớp cuối
 print(">>> Giai đoạn 2: Fine-Tuning...")
-base_model = model.get_layer("mobilenet_base")
+base_model = model.get_layer("mobilenetv2_1.00_224")
 base_model.trainable = True
 for layer in base_model.layers[:-30]:
     layer.trainable = False
