@@ -3,43 +3,58 @@ from data_loader import load_datasets
 from model import build_model
 import os
 
-# Tạo thư mục lưu trữ
 if not os.path.exists('models'): os.makedirs('models')
 
 # 1. Load Data
 train_ds, val_ds, class_names = load_datasets("dataset")
-# 2. Data Augmentation Pipeline (Tăng cường dữ liệu)
+
+# 2. Data Augmentation (Giữ nguyên cấu hình mạnh mẽ của bạn)
 augmentation_layer = tf.keras.Sequential([
-    # 1. Loại bỏ nhiễu rìa (Nút bấm, UI artifacts)
-    # Cắt CenterCrop sâu hơn (85%) để chắc chắn mất các icon ở góc
-    tf.keras.layers.CenterCrop(height=200, width=200), 
+    tf.keras.layers.RandomCrop(height=224, width=224), 
     tf.keras.layers.Resizing(224, 224), 
-    
-    # 2. Đa dạng hóa góc nhìn (Xoay, Lật, Dịch chuyển) 
     tf.keras.layers.RandomFlip("horizontal_and_vertical"),
-    tf.keras.layers.RandomRotation(0.3), # Tăng lên 0.3 để chấp nhận mọi góc cầm tay 
-    tf.keras.layers.RandomZoom(0.3),     # Giả lập việc đưa quả lại gần/ra xa camera 
-    tf.keras.layers.RandomTranslation(0.15, 0.15), # Quan trọng: Giúp nhận diện khi quả không nằm giữa 
-    
-    # 3. Xử lý ánh sáng (Khắc phục lỗi camera tối/chói) 
-    # Tăng Contrast và Brightness lên 0.4 để mô hình quen với ảnh webcam thực tế 
+    tf.keras.layers.RandomRotation(0.3), 
+    tf.keras.layers.RandomZoom(0.3),     
+    tf.keras.layers.RandomTranslation(0.15, 0.15), 
     tf.keras.layers.RandomContrast(0.4), 
-    tf.keras.layers.RandomBrightness(0.4)
+    tf.keras.layers.RandomBrightness(0.4),
+    tf.keras.layers.GaussianNoise(stddev=0.1)
 ])
 train_ds = train_ds.map(lambda x, y: (augmentation_layer(x, training=True), y))
 
 # 3. Khởi tạo Model
 model = build_model()
 
-# 4. Thiết lập bộ 3 Callbacks "Quyền lực"
-callbacks = [
-    # Lưu bản tốt nhất dựa trên độ chính xác
+# --- GIAI ĐOẠN 1: Transfer Learning (Huấn luyện lớp phân loại mới) ---
+print(">>> Giai đoạn 1: Huấn luyện lớp phân loại...")
+callbacks1 = [
+    tf.keras.callbacks.ModelCheckpoint('models/best_model_stage1.h5', monitor='val_accuracy', save_best_only=True),
+    tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
+]
+model.fit(train_ds, validation_data=val_ds, epochs=15, callbacks=callbacks1)
+
+# --- GIAI ĐOẠN 2: Fine-Tuning (Mở khóa não bộ MobileNetV2) ---
+print(">>> Giai đoạn 2: Fine-Tuning toàn mạng...")
+
+# Tìm lớp base_model (thường là lớp thứ 1 hoặc có tên cụ thể)
+# Ở đây tôi giả định lớp đầu tiên là base_model của bạn
+base_model = model.layers[1] 
+base_model.trainable = True
+
+# Chỉ mở khóa 30 lớp cuối để tránh phá hủy kiến thức cũ
+for layer in base_model.layers[:-30]:
+    layer.trainable = False
+
+# Re-compile với Learning Rate cực thấp
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+callbacks2 = [
     tf.keras.callbacks.ModelCheckpoint('models/best_model.h5', monitor='val_accuracy', save_best_only=True),
-    # Dừng khi không còn tiến bộ để tránh học vẹt
-    tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True),
-    # Giảm LR khi học chậm lại để tối ưu hóa
-    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=2)
+    tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 ]
 
-# 5. Huấn luyện
-model.fit(train_ds, validation_data=val_ds, epochs=30, callbacks=callbacks)
+model.fit(train_ds, validation_data=val_ds, epochs=15, callbacks=callbacks2)
